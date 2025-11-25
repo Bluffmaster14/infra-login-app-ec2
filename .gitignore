@@ -3,3 +3,4 @@
 terraform.tfstate
 .metadata
 target
+terraform.tfstate.backup
