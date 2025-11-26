@@ -1,0 +1,50 @@
+pipeline{
+    agent any
+    tools {
+    maven 'Maven 3.9.8'
+   }
+    environment{
+       MAVEN_OPTS="--add-opens java.base/java.lang=ALL-UNNAMED"
+    }
+    parameters {
+        string(name: 'branch', defaultValue: 'main', description: 'branch name')
+        string(name: 'repo', defaultValue: 'https://github.com/Bluffmaster14/infra-login-app-ec2.git', description: 'git repo url')
+        string(name: 'server_ip', defaultValue: '', description: 'Enter the EC2 server IP address')
+        string(name: 'pem_path', defaultValue: '', description: 'Enter the path of pem file')
+        string(name: 'context', defaultValue: 'login', description: 'Enter the context name')
+    }   
+    stages{
+        stage("Code checkout"){
+            steps{
+                echo "Code checkout from GitHub"
+                sh "rm -rf *; git clone -b main https://github.com/Bluffmaster14/infra-login-app-ec2.git"
+            }
+        
+        }
+        stage("Build Stage"){
+            steps{
+                echo "Building the application using maven"
+                sh "cd infra-login-app-ec2; mvn clean compile install"
+            
+            }
+        }
+        stage("Deploy Stage"){
+            steps{
+                echo "Deploying the application to Tomcat server"
+                sh '''
+                    scp -i ${pem_path} infra-login-app-ec2/target/${context}.war ec2-user@$server_ip:/home/ec2-user/
+                    ssh -i ${pem_path} ec2-user@$server_ip 'bash -s' < infra-login-app-ec2/tomcatstart.sh /home/ec2-user/${context}.war ${context} http://localhost:8080/${context} 60  
+
+                '''
+            }
+        }
+    }
+    post{
+        success{
+            echo "========Application successfully deployed========"
+        }
+        failure{
+            echo "========Application deployment failed========"
+        }
+    }
+}

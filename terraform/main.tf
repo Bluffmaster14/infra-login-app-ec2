@@ -14,30 +14,10 @@ resource "aws_instance" "tomcat" {
               sudo mkdir /opt/tomcat
               sudo tar xzf tomcat.tar.gz -C /opt/tomcat --strip-components=1
               sudo chown -R tomcat:tomcat /opt/tomcat
+              sudo chmod -R 755 /opt/tomcat
               sudo sh -c 'chmod +x /opt/tomcat/bin/*.sh'
-              sudo echo "
-                    [Unit]
-                    Description=Apache Tomcat Web Application Container
-                    After=network.target
-
-                    [Service]
-                    Type=forking
-                    User=tomcat
-                    Group=tomcat
-                    Environment="JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto"
-                    Environment="CATALINA_PID=/opt/tomcat/temp/tomcat.pid"
-                    Environment="CATALINA_HOME=/opt/tomcat"
-                    Environment="CATALINA_BASE=/opt/tomcat"
-                    ExecStart=/opt/tomcat/bin/startup.sh
-                    ExecStop=/opt/tomcat/bin/shutdown.sh
-
-                   [Install]
-                   WantedBy=multi-user.target
-                " >> /etc/systemd/system/tomcat.service
-              sudo systemctl daemon-reload
-              sudo systemctl start tomcat
-              sudo systemctl enable tomcat
-
+              sudo sh -c './opt/tomcat/bin/startup.sh'
+              
               EOF
   tags = {
     Name = "tomcatServerInstance"
@@ -72,7 +52,19 @@ resource "aws_security_group" "tomcat_sg" {
 
 }
 
+resource "tls_private_key" "tomcat" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
 resource "aws_key_pair" "tomcat_key" {
   key_name   = "tomcat_key"
-  public_key = file("~/.ssh/id_rsa.pub")
+  public_key = tls_private_key.tomcat.public_key_openssh
 }
+
+resource "local_file" "tomcat_private_key" {
+  content         = tls_private_key.tomcat.private_key_pem
+  filename        = "${path.module}/tomcat_key.pem"
+  file_permission = "0600"
+}
+
