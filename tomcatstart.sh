@@ -70,15 +70,15 @@ deploy_new() {
 
 restore_backup() {
     echo "Restoring previous deployment..."
-    # remove failed artifacts
-    [[ -f "$APP_WAR" ]] && rm -f "$APP_WAR"
-    [[ -d "$APP_DIR" ]] && rm -rf "$APP_DIR"
-    # restore backups if they exist
-    if [[ -f "$BACKUP_WAR" ]]; then
-        mv "$BACKUP_WAR" "$APP_WAR"
+    # Find and restore the latest backup
+    latest_war=$(ls -t "$APP_WAR".bak.* 2>/dev/null | head -1)
+    if [[ -n "$latest_war" ]]; then
+        mv "$latest_war" "$APP_WAR"
     fi
-    if [[ -d "$BACKUP_DIR" ]]; then
-        mv "$BACKUP_DIR" "$APP_DIR"
+    
+    latest_dir=$(ls -td "$APP_DIR".bak.* 2>/dev/null | head -1)
+    if [[ -n "$latest_dir" ]]; then
+        mv "$latest_dir" "$APP_DIR"
     fi
 }
 
